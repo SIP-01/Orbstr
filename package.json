@@ -1,0 +1,7 @@
+{
+  "name": "@sip-01/orbstr",
+  "private": false,
+  "type": "module",
+  "license": "MIT",
+  "description": "ORBSTR capability announcements for agents. SIP-01 companion, kind 39698."
+}
