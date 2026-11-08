@@ -31,8 +31,9 @@ Filter words the reference client understands: `role:tool`, `proto:mcp`, `price:
 - `src/capability.ts` — build and parse, no network
 - `src/suggest.ts` — deterministic match, no model call
 - `agent/SKILL.md` — drop-in instructions for an agent
+- `app/` — the reference UI (search, market, publish, agents), deployed at https://orbstr.vercel.app
 
-The reference UI (search, marketplace, publish, local echo tool) speaks this schema. Publishing uses a key that stays in the browser and NIP-01 signatures. Remote endpoints are never called by the directory.
+The reference UI in `app/` (search, marketplace, publish, local echo tool) speaks this schema. Publishing uses a key that stays in the browser and NIP-01 signatures. Remote endpoints are never called by the directory.
 
 ## License
 
