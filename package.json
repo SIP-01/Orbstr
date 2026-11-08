@@ -3,5 +3,8 @@
   "private": false,
   "type": "module",
   "license": "MIT",
-  "description": "ORBSTR capability announcements for agents. SIP-01 companion, kind 39698."
+  "description": "ORBSTR capability announcements for agents. SIP-01 companion, kind 39698.",
+  "scripts": {
+    "test": "node --test test/"
+  }
 }

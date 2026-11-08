@@ -1,0 +1,17 @@
+{
+  "kind": 39698,
+  "pubkey": "0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c4b5a69788796a5b4c3d2e1f0",
+  "created_at": 1794000000,
+  "tags": [
+    ["d", "web-search"],
+    ["v", "1"],
+    ["role", "tool"],
+    ["proto", "mcp"],
+    ["price", "metered"],
+    ["t", "search"],
+    ["t", "web"],
+    ["endpoint", "https://search.example/mcp"],
+    ["alt", "Capability announcement: web search tool"]
+  ],
+  "content": "{\"name\":\"Web search\",\"summary\":\"Search the live web. 20 sats per query.\",\"priceNote\":\"20 sats per query\"}"
+}
