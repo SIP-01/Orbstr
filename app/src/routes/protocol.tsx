@@ -73,6 +73,29 @@ function Protocol() {
           </p>
         </Panel>
       </div>
+      <Panel>
+        <h2 className="font-display text-2xl">{human ? "Looking for web pages?" : "Companion client"}</h2>
+        <p className="mt-3 text-sm leading-relaxed text-muted">
+          {human ? (
+            <>
+              This directory is for tools and agents. Web pages live in the SIP-01 web index (kind 39697), searched by the
+              native client:{" "}
+              <a className="text-primary" href="https://sipstr.vercel.app" target="_blank" rel="noreferrer">
+                sipstr.vercel.app
+              </a>
+              .
+            </>
+          ) : (
+            <>
+              Kind 39697 web documents are searched by the native SIP-01 client:{" "}
+              <a className="text-primary" href="https://sipstr.vercel.app" target="_blank" rel="noreferrer">
+                sipstr.vercel.app
+              </a>
+              . This directory stays kind 39698.
+            </>
+          )}
+        </p>
+      </Panel>
     </div>
   );
 }

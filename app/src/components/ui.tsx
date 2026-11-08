@@ -39,6 +39,8 @@ const NAV = [
   { to: "/publish", agent: "Publish", human: "Add" },
   { to: "/agents", agent: "Agents", human: "Help" },
   { to: "/protocol", agent: "Protocol", human: "How" },
+  // The SIP-01 web search client — the other half of the search story (kind 39697).
+  { to: "https://sipstr.vercel.app", agent: "Web", human: "Web search", external: true },
 ] as const;
 
 export function Shell({ children }: { children: ReactNode }) {
@@ -72,6 +74,21 @@ export function Shell({ children }: { children: ReactNode }) {
           </div>
           <nav className="-mx-4 flex gap-1 overflow-x-auto border-t border-border px-4 py-2" aria-label="Sections">
             {NAV.map((item) => {
+              const label = human ? item.human : item.agent;
+              if ("external" in item) {
+                return (
+                  <a
+                    key={item.to}
+                    href={item.to}
+                    target="_blank"
+                    rel="noreferrer"
+                    title="SIP-01 web index search (kind 39697)"
+                    className="inline-flex h-11 shrink-0 items-center rounded-full px-3 text-sm text-muted hover:text-fg"
+                  >
+                    {label}
+                  </a>
+                );
+              }
               const active = item.to === "/" ? path === "/" : path.startsWith(item.to);
               return (
                 <Link
@@ -82,7 +99,7 @@ export function Shell({ children }: { children: ReactNode }) {
                     (active ? "bg-surface-2 text-fg" : "text-muted hover:text-fg")
                   }
                 >
-                  {human ? item.human : item.agent}
+                  {label}
                 </Link>
               );
             })}
