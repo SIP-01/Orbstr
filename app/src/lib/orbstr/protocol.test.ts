@@ -58,3 +58,27 @@ test("rejects a bad id and a javascript endpoint", () => {
     null,
   );
 });
+
+import { endpointAllowed } from "./protocol.ts";
+
+test("endpoint URL gate rejects credentials, local names and private/reserved IP literals", () => {
+  assert.equal(endpointAllowed("https://example.com/mcp"), true);
+  assert.equal(endpointAllowed("wss://relay.example.com"), true);
+  assert.equal(endpointAllowed("https://user:pass@example.com"), false);
+  assert.equal(endpointAllowed("https://localhost"), false);
+  assert.equal(endpointAllowed("https://service.local"), false);
+  assert.equal(endpointAllowed("https://127.0.0.1"), false);
+  assert.equal(endpointAllowed("https://10.2.3.4"), false);
+  assert.equal(endpointAllowed("https://172.16.0.5"), false);
+  assert.equal(endpointAllowed("https://192.168.1.1"), false);
+  assert.equal(endpointAllowed("https://169.254.169.254"), false);
+  assert.equal(endpointAllowed("https://100.64.0.10"), false);
+  assert.equal(endpointAllowed("https://[::1]"), false);
+  assert.equal(endpointAllowed("http://example.com"), false);
+});
+
+test("local built-in endpoints require an explicit local allow flag", () => {
+  assert.equal(endpointAllowed("local://echo"), false);
+  assert.equal(endpointAllowed("local://echo", true), true);
+  assert.equal(endpointAllowed("local://echo?url=https://example.com", true), false);
+});
