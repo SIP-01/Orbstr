@@ -94,6 +94,19 @@ Before any remote call, use a trusted egress gateway or service that enforces al
 
 The app's endpointAllowed helper is a syntactic listing filter only. It rejects common unsafe URL forms and private/reserved IP literals, but it does not resolve DNS, pin a connected peer or revalidate redirects. It is not an SSRF authorization control. Never treat a true return value as permission to fetch.
 
+### Isolated execution option
+
+If Orbstr later runs publisher-supplied JavaScript or other untrusted tool code, evaluate an isolated execution runtime separately from the capability directory. Cloudflare Dynamic Workers document two useful controls:
+
+- Set `globalOutbound: null` to block all outbound `fetch()` and `connect()` calls, then expose only specifically required services through bindings.
+- Or route outbound calls through a loader `WorkerEntrypoint` gateway via `globalOutbound`, so the gateway can inspect, restrict, credential, forward and audit requests.
+
+This is an implementation candidate, not a turnkey SSRF-safe gateway. The custom gateway must still implement the destination resolution/address checks, connected-peer pinning, redirect revalidation, credential stripping, request/response limits, schema checks, timeouts and audit policy listed above. Do not assume that the Dynamic Workers interception hook automatically performs those checks.
+
+This option is specifically for compatible dynamic Worker code; it is not a drop-in runtime for arbitrary external MCP servers, Linux containers or every provider protocol. Confirm runtime compatibility, current limits and pricing, and security-test the gateway before production use.
+
+Reference: [Cloudflare Dynamic Workers egress control](https://developers.cloudflare.com/dynamic-workers/usage/egress-control/).
+
 ## User approval and data minimization
 
 Ask before a call leaves the user's environment, sends non-public data, creates an account, starts a job or can incur cost. Show the exact provider, endpoint, protocol, data to be sent and expected price/limits. Ask for approval for the exact operation; a general approval to discover tools is not approval to invoke them.
