@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildCapabilityEvent, matches, parseCapabilityEvent, parseQuery } from "./protocol.ts";
+import { buildCapabilityEvent, endpointAllowed, matches, parseCapabilityEvent, parseQuery } from "./protocol.ts";
 
 test("round-trips a capability without touching kind 39697", () => {
   const draft = buildCapabilityEvent({
@@ -59,7 +59,6 @@ test("rejects a bad id and a javascript endpoint", () => {
   );
 });
 
-import { endpointAllowed } from "./protocol.ts";
 
 test("endpoint URL gate rejects credentials, local names and private/reserved IP literals", () => {
   assert.equal(endpointAllowed("https://example.com/mcp"), true);
@@ -73,6 +72,9 @@ test("endpoint URL gate rejects credentials, local names and private/reserved IP
   assert.equal(endpointAllowed("https://192.168.1.1"), false);
   assert.equal(endpointAllowed("https://169.254.169.254"), false);
   assert.equal(endpointAllowed("https://100.64.0.10"), false);
+  assert.equal(endpointAllowed("https://192.0.2.10"), false);
+  assert.equal(endpointAllowed("https://198.18.0.1"), false);
+  assert.equal(endpointAllowed("https://224.0.0.1"), false);
   assert.equal(endpointAllowed("https://[::1]"), false);
   assert.equal(endpointAllowed("http://example.com"), false);
 });
