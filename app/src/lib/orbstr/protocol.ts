@@ -113,12 +113,51 @@ export function parseQuery(input: string): QueryParts {
   return { text: free.join(" "), role, proto, price };
 }
 
+/**
+ * Syntactic URL gate for listing creation/parsing only.
+ *
+ * This is NOT an SSRF authorization check. Before an agent or server calls a
+ * discovered endpoint, a trusted egress gateway must resolve and validate all
+ * A/AAAA records, reject non-global addresses, pin the selected destination,
+ * revalidate every redirect and enforce request/response bounds.
+ */
+function forbiddenIpv4Literal(hostname: string): boolean {
+  const parts = hostname.split(".");
+  if (parts.length !== 4 || parts.some((part) => !/^\d{1,3}$/.test(part))) return false;
+  const octets = parts.map(Number);
+  if (octets.some((part) => part < 0 || part > 255)) return true;
+  const [a, b, c] = octets;
+  if (a === 0 || a === 10 || a === 127 || a >= 224) return true;
+  if (a === 100 && b >= 64 && b <= 127) return true; // shared address space
+  if (a === 169 && b === 254) return true; // link-local / metadata
+  if (a === 172 && b >= 16 && b <= 31) return true;
+  if (a === 192 && (b === 168 || (b === 0 && c === 0) || (b === 0 && c === 2) || (b === 88 && c === 99))) return true;
+  if (a === 198 && (b === 18 || b === 19 || (b === 51 && c === 100))) return true;
+  if (a === 203 && b === 0 && c === 113) return true;
+  return false;
+}
+
 export function endpointAllowed(value: string, allowLocal = false): boolean {
   try {
     const url = new URL(value);
-    if (url.protocol === "https:" || url.protocol === "wss:") return true;
-    if (allowLocal && url.protocol === "local:") return true;
-    return false;
+    if (url.username || url.password) return false;
+    if (url.protocol === "local:") {
+      return allowLocal && Boolean(url.hostname) && !url.search && !url.hash;
+    }
+    if (url.protocol !== "https:" && url.protocol !== "wss:") return false;
+    const hostname = url.hostname.toLowerCase().replace(/\.$/, "");
+    if (!hostname || hostname === "localhost" ||
+        hostname.endsWith(".localhost") || hostname.endsWith(".local") ||
+        hostname.endsWith(".lan") || hostname.endsWith(".internal") ||
+        hostname.endsWith(".home.arpa") || hostname.endsWith(".test") ||
+        hostname === "metadata.google.internal" || hostname === "metadata") {
+      return false;
+    }
+    // Reject IPv6 literals here. A trusted egress gateway can allow global IPv6
+    // only after validating the parsed address and the actual connected peer.
+    if (hostname.startsWith("[") || hostname.includes(":")) return false;
+    if (forbiddenIpv4Literal(hostname)) return false;
+    return true;
   } catch {
     return false;
   }
