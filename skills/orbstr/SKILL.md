@@ -46,6 +46,8 @@ This shape follows the [OpenAI MCP search/fetch compatibility guidance](https://
 ### Search result handling
 
 - Start with a focused query and a modest result set (often 5–10 candidates). Inspect titles, URLs, excerpts and available dates before fetching full pages. Fetch only the strongest candidates rather than sending every page body into the agent context.
+- Treat semantic similarity scores as ranking signals, not validation: a semantically close result may still fail a hard requirement in the query. Verify domain, date, product, protocol and other constraints against each candidate's metadata or fetched source.
+- For multi-query research, use genuinely different evidence angles (for example primary documentation, implementation examples and independent evaluations) rather than repeating near-synonyms; retain the query associated with each result.
 - Preserve provider, query, result ID, canonical URL, title and the original excerpt. Do not replace source evidence with an upstream synthesized answer; store a generated synthesis separately and retain its cited sources.
 - Preserve freshness as distinct facts. A page's publication date, page-modified date (for example HTTP `Last-Modified`), provider/index timestamp, fetch time and cache age are not interchangeable. Missing dates stay unknown; retrieval time does not make an old page current.
 - When a provider offers ETag or Last-Modified validators, retain and replay them only according to that provider's contract. A `not modified` response means the cached representation was revalidated, not that a new page body was fetched.
