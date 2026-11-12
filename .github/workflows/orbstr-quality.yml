@@ -31,7 +31,17 @@ jobs:
       - name: Run isolated ORBSTR endpoint safety regression tests
         working-directory: app
         run: npm run test:orbstr
+      - name: Run complete application test suite
+        working-directory: app
+        run: npm test
+      - name: Type-check the application
+        working-directory: app
+        run: npm run typecheck
+      - name: Lint the application
+        working-directory: app
+        run: npm run lint
       - name: Validate portable Agent Skill format
         run: |
           python -m pip install "git+https://github.com/agentskills/agentskills.git@83021e2be457a9b6679148719c1f6074f0ad975e#subdirectory=skills-ref"
           skills-ref validate skills/orbstr
+          skills-ref validate app/.grok/skills/og
