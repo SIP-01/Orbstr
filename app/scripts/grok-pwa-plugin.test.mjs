@@ -6,9 +6,9 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 import {
   appNameFromHost,
-  createHeadInjector,
+  createHeadInjector as createHeadInjectorImpl,
   grokXCreatorHeadTags,
-  injectGrokPwaHead,
+  injectGrokPwaHead as injectGrokPwaHeadImpl,
   isDocumentPath,
   isInstallQuery,
   publicAppHost,
@@ -20,6 +20,19 @@ import {
 import { renderInstallPage } from "./grok-pwa-plugin.mjs";
 
 const TEMPLATE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+
+// Unit tests must not inherit src/lib/og/site.json from the checked-out app.
+// Production callers pass their real workspace root explicitly; these wrappers
+// keep no-cwd tests deterministic and isolated from repository branding.
+const EMPTY_WORKSPACE = mkdtempSync(join(tmpdir(), "grok-pwa-empty-workspace-"));
+
+function injectGrokPwaHead(html, ctx = {}) {
+  return injectGrokPwaHeadImpl(html, { ...ctx, cwd: ctx.cwd ?? EMPTY_WORKSPACE });
+}
+
+function createHeadInjector(ctx = {}) {
+  return createHeadInjectorImpl({ ...ctx, cwd: ctx.cwd ?? EMPTY_WORKSPACE });
+}
 
 test("injects before </head>", () => {
   const out = injectGrokPwaHead("<html><head><title>x</title></head><body></body></html>");
