@@ -1,4 +1,4 @@
-import { verifyEvent } from "nostr-tools/pure";
+import { getEventHash, verifyEvent } from "nostr-tools/pure";
 import { slugify, type Capability } from "./protocol.ts";
 
 /**
@@ -66,6 +66,7 @@ export function isVerifiedAndUnexpiredNostrEvent(
     if (Math.min(...expirations) <= nowSeconds) return false;
   }
   try {
+    if (getEventHash(event as Parameters<typeof getEventHash>[0]) !== event.id) return false;
     return verifyEvent(event as Parameters<typeof verifyEvent>[0]);
   } catch {
     return false;
