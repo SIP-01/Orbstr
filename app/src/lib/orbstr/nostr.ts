@@ -1,5 +1,5 @@
 import { buildCapabilityEvent, parseCapabilityEvent, WEB_INDEX_KIND, HANDLER_KIND, CAPABILITY_KIND, type CapabilityInput } from "./protocol";
-import { parseAnnouncedAgent, DVM_KIND_LIST, jobKinds } from "./dvm";
+import { parseAnnouncedAgent, DVM_KIND_LIST, jobKinds, isVerifiedAndUnexpiredNostrEvent } from "./dvm";
 import { currentRelays, DIRECTORY_RELAYS, setLive, upsertLocal, writableRelays, type HandlerHit, type ObservationHit, type RelayNote } from "./store";
 
 export interface SignedEvent {
@@ -108,7 +108,7 @@ async function runScan() {
         if (SEARCH_RELAYS.has(url)) {
           filters.push({ kinds: [HANDLER_KIND], search: "DVM", limit: 20 });
         }
-        const events: Array<{ id?: string; kind: number; content: string; tags: string[][]; created_at: number; pubkey: string }> = [];
+        const events: Array<{ id?: string; sig?: string; kind: number; content: string; tags: string[][]; created_at: number; pubkey: string }> = [];
         let failed = 0;
         await Promise.all(
           filters.map(async (filter) => {
@@ -136,6 +136,7 @@ async function runScan() {
 
     for (const { events } of settled) {
       for (const event of events) {
+        if (!isVerifiedAndUnexpiredNostrEvent(event)) continue;
         const dedupe = event.id || `${event.pubkey}:${event.kind}:${event.created_at}`;
         if (seen.has(dedupe)) continue;
         seen.add(dedupe);
