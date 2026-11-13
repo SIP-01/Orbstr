@@ -66,8 +66,19 @@ export function isVerifiedAndUnexpiredNostrEvent(
     if (Math.min(...expirations) <= nowSeconds) return false;
   }
   try {
-    if (getEventHash(event as Parameters<typeof getEventHash>[0]) !== event.id) return false;
-    return verifyEvent(event as Parameters<typeof verifyEvent>[0]);
+    // Build a fresh plain object: nostr-tools caches verification in a symbol
+    // property, and object spread can copy that cache onto a mutated event.
+    const candidate = {
+      id: event.id,
+      pubkey: event.pubkey,
+      created_at: event.created_at,
+      kind: event.kind,
+      tags: event.tags,
+      content: event.content,
+      sig: event.sig,
+    };
+    if (getEventHash(candidate) !== candidate.id) return false;
+    return verifyEvent(candidate as Parameters<typeof verifyEvent>[0]);
   } catch {
     return false;
   }
