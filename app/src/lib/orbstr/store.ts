@@ -135,13 +135,17 @@ function signerFor(type: string): Signer | null {
   return null;
 }
 
-function readLogins(value: unknown): SavedLogin[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter((item): item is SavedLogin => {
-    if (!item || typeof item !== "object") return false;
-    const login = item as SavedLogin;
-    return typeof login.id === "string" && typeof login.pubkey === "string" && typeof login.type === "string";
-  });
+function storageSafeState(state: Persisted): Persisted {
+  // Signer credentials are session-only. Never serialize NSEC, NIP-46 client
+  // secrets, or a restorable authenticated session into browser storage.
+  return {
+    ...state,
+    secretHex: null,
+    pubkey: null,
+    npub: null,
+    signer: null,
+    logins: [],
+  };
 }
 
 function load() {
@@ -152,27 +156,28 @@ function load() {
       persisted = { ...serverPersisted };
       return;
     }
-    const parsed = JSON.parse(raw) as Persisted;
-    const logins = readLogins(parsed.logins);
-    const active = logins[0];
+    const parsed = JSON.parse(raw) as Partial<Persisted>;
     persisted = {
       relays: Array.isArray(parsed.relays) && parsed.relays.length > 0 ? withStandard(parsed.relays) : DEFAULT_RELAYS,
-      secretHex: typeof parsed.secretHex === "string" ? parsed.secretHex : null,
-      pubkey: active?.pubkey || (typeof parsed.pubkey === "string" ? parsed.pubkey : null),
-      npub: typeof parsed.npub === "string" ? parsed.npub : null,
-      signer: active ? signerFor(active.type) : parsed.signer === "nsec" || parsed.signer === "nip07" || parsed.signer === "bunker" ? parsed.signer : parsed.secretHex ? "nsec" : null,
+      // Older versions persisted credentials. Discard them on hydration and
+      // require the user to authenticate again with their chosen signer.
+      secretHex: null,
+      pubkey: null,
+      npub: null,
+      signer: null,
       voice: parsed.voice === "human" ? "human" : "agent",
       local: Array.isArray(parsed.local) ? parsed.local : [],
-      logins,
+      logins: [],
     };
+    // Rewrite legacy storage immediately so secrets are not left at rest.
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(storageSafeState(persisted)));
   } catch {
     persisted = { ...serverPersisted };
   }
 }
-
 function persist() {
   if (typeof window !== "undefined") {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(storageSafeState(persisted)));
   }
   rebuild();
   emit();
