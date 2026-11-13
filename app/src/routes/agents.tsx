@@ -3,11 +3,12 @@ import { useMemo, useState } from "react";
 import { Button, Panel } from "@/components/ui";
 import { suggestCapabilities } from "@/lib/orbstr/suggest";
 import { useOrbstr } from "@/lib/orbstr/store";
+import { DVM_KIND_LIST } from "@/lib/orbstr/dvm";
 
-const REQ = `{
-  "kinds": [39698],
-  "limit": 40
-}`;
+const REQ = JSON.stringify([
+  { kinds: [39698], limit: 40 },
+  { kinds: [31990], "#k": DVM_KIND_LIST, limit: 40 },
+], null, 2);
 
 export const Route = createFileRoute("/agents")({ component: Agents });
 
@@ -55,7 +56,7 @@ function Agents() {
       </Panel>
       <div className="grid gap-4 md:grid-cols-2">
         <Panel>
-          <h2 className="font-display text-2xl">{human ? "For a program" : "Relay filter"}</h2>
+          <h2 className="font-display text-2xl">{human ? "For a program" : "Nostr filters (OR)"}</h2>
           <pre className="mt-3 overflow-x-auto rounded-xl bg-bg p-3 text-sm text-phosphor">{REQ}</pre>
           <Button
             className="mt-3"
@@ -64,7 +65,7 @@ function Agents() {
               void navigator.clipboard.writeText(REQ).then(() => setCopied("Filter copied."));
             }}
           >
-            {human ? "Copy the filter" : "Copy filter"}
+            {human ? "Copy the filters" : "Copy filters"}
           </Button>
         </Panel>
         <Panel>
