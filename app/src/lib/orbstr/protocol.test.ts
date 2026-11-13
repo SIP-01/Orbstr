@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildCapabilityEvent, endpointAllowed, matches, parseCapabilityEvent, parseQuery } from "./protocol.ts";
+import { assertRelayAcceptance, buildCapabilityEvent, endpointAllowed, matches, parseCapabilityEvent, parseQuery } from "./protocol.ts";
 import { finalizeEvent, generateSecretKey } from "nostr-tools/pure";
 import { isVerifiedAndUnexpiredNostrEvent } from "./dvm.ts";
 
@@ -113,4 +113,10 @@ test("relay-discovered Nostr events honour NIP-40 expiry", () => {
   assert.equal(isVerifiedAndUnexpiredNostrEvent(make([["expiration", "101"]]), 100), true);
   assert.equal(isVerifiedAndUnexpiredNostrEvent(make([["expiration", "100"]]), 100), false);
   assert.equal(isVerifiedAndUnexpiredNostrEvent(make([["expiration", "soon"]]), 100), false);
+});
+
+test("publishing requires at least one relay acceptance", () => {
+  assert.doesNotThrow(() => assertRelayAcceptance([{ state: "fail" }, { state: "ok" }]));
+  assert.throws(() => assertRelayAcceptance([{ state: "fail" }, { state: "fail" }]), /No relay accepted/);
+  assert.throws(() => assertRelayAcceptance([]), /No relay accepted/);
 });
