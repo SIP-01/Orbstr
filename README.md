@@ -40,6 +40,7 @@ Agents and servers must not call discovered endpoints directly. Remote invocatio
 ## Layout
 
 - `spec/CAPABILITY.md` — companion event profile
+- `docs/AGENT-INTEROPERABILITY.md` — NIP/AID/DVM/payment and relay integration guidance
 - `src/capability.ts` — build and parse functions
 - `src/suggest.ts` — deterministic suggestion matcher; no model call
 - `app/` — reference UI, deployed at https://orbstr.vercel.app
