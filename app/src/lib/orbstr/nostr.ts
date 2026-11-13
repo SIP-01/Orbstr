@@ -1,4 +1,4 @@
-import { buildCapabilityEvent, parseCapabilityEvent, WEB_INDEX_KIND, HANDLER_KIND, CAPABILITY_KIND, type CapabilityInput } from "./protocol";
+import { assertRelayAcceptance, buildCapabilityEvent, parseCapabilityEvent, WEB_INDEX_KIND, HANDLER_KIND, CAPABILITY_KIND, type CapabilityInput } from "./protocol";
 import { parseAnnouncedAgent, DVM_KIND_LIST, jobKinds, isVerifiedAndUnexpiredNostrEvent } from "./dvm";
 import { currentRelays, DIRECTORY_RELAYS, setLive, upsertLocal, writableRelays, type HandlerHit, type ObservationHit, type RelayNote } from "./store";
 
@@ -54,6 +54,7 @@ async function publishEvent(event: DraftEvent) {
     }),
   );
   pool.destroy();
+  assertRelayAcceptance(notes);
   return { signed, pubkey: signed.pubkey, notes };
 }
 
