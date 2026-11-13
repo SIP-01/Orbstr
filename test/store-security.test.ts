@@ -14,16 +14,32 @@ test("Nostr login credentials are never persisted in browser storage", async () 
     },
   });
 
-  const store = await import("../app/src/lib/orbstr/store.ts?security-test");
   const nsec = "nsec1" + "a".repeat(58);
   const clientNsec = "b".repeat(64);
+  values.set("orbstr.v2", JSON.stringify({
+    relays: ["wss://relay.example"],
+    secretHex: "d".repeat(64),
+    pubkey: "c".repeat(64),
+    signer: "nsec",
+    logins: [{
+      id: "legacy-login",
+      type: "nsec",
+      pubkey: "c".repeat(64),
+      createdAt: new Date().toISOString(),
+      data: { nsec },
+    }],
+  }));
+
+  const store = await import("../app/src/lib/orbstr/store.ts?security-test");
+  assert.equal(store.useOrbstr().pubkey, null, "legacy persisted sessions must not be restored");
+  assert.equal((values.get("orbstr.v2") ?? "").includes(nsec), false, "legacy NSEC must be purged on hydration");
 
   store.rememberLogin({
     id: "test-login",
     type: "nsec",
     pubkey: "c".repeat(64),
     createdAt: new Date().toISOString(),
-    data: { nsec },
+    data: { nsec, clientNsec },
   }, "npub1test");
 
   const serialized = values.get("orbstr.v2") ?? "";
