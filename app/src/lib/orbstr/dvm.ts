@@ -1,4 +1,5 @@
-import { slugify, type Capability } from "./protocol";
+import { getEventHash, verifyEvent } from "nostr-tools/pure";
+import { slugify, type Capability } from "./protocol.ts";
 
 /**
  * Job request kinds a NIP-90 provider puts on its NIP-89 handler (kind 31990).
@@ -38,12 +39,55 @@ export interface AnnouncementEvent {
   tags: string[][];
   created_at: number;
   pubkey: string;
+  id?: string;
+  sig?: string;
+}
+
+
+/**
+ * Verify an event received from a relay before using its claims.
+ * Also honour NIP-40 expiry locally: not every relay filters expired events.
+ * This is a client-side safety gate, not a substitute for relay validation.
+ */
+export function isVerifiedAndUnexpiredNostrEvent(
+  event: AnnouncementEvent,
+  nowSeconds = Math.floor(Date.now() / 1000),
+): boolean {
+  if (!event.id || !event.sig || !HEX64.test(event.pubkey)) return false;
+  if (!Number.isSafeInteger(event.created_at) || event.created_at < 0) return false;
+  const expirationTags = event.tags.filter((tag) => tag[0] === "expiration");
+  if (expirationTags.some((tag) =>
+    typeof tag[1] !== "string" || tag[1].length === 0 ||
+    Array.from(tag[1]).some((char) => char < "0" || char > "9"),
+  )) return false;
+  if (expirationTags.length > 0) {
+    const expirations = expirationTags.map((tag) => Number(tag[1]));
+    if (expirations.some((value) => !Number.isSafeInteger(value) || value < 0)) return false;
+    if (Math.min(...expirations) <= nowSeconds) return false;
+  }
+  try {
+    // Build a fresh plain object: nostr-tools caches verification in a symbol
+    // property, and object spread can copy that cache onto a mutated event.
+    const candidate = {
+      id: event.id,
+      pubkey: event.pubkey,
+      created_at: event.created_at,
+      kind: event.kind,
+      tags: event.tags,
+      content: event.content,
+      sig: event.sig,
+    };
+    if (getEventHash(candidate) !== candidate.id) return false;
+    return verifyEvent(candidate as Parameters<typeof verifyEvent>[0]);
+  } catch {
+    return false;
+  }
 }
 
 export function jobKinds(tags: string[][]): string[] {
   const found: string[] = [];
   for (const tag of tags) {
-    if ((tag[0] !== "k" && tag[0] !== "job") || !tag[1]) continue;
+    if (tag[0] !== "k" || !tag[1]) continue;
     const kind = tag[1].trim();
     const n = Number(kind);
     if (!Number.isInteger(n) || n < 5000 || n >= 6000) continue;

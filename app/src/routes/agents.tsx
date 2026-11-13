@@ -3,25 +3,26 @@ import { useMemo, useState } from "react";
 import { Button, Panel } from "@/components/ui";
 import { suggestCapabilities } from "@/lib/orbstr/suggest";
 import { useOrbstr } from "@/lib/orbstr/store";
+import { DVM_KIND_LIST } from "@/lib/orbstr/dvm";
 
-const REQ = `{
-  "kinds": [39698],
-  "limit": 40
-}`;
+const REQ = JSON.stringify([
+  { kinds: [39698], limit: 40 },
+  { kinds: [31990], "#k": DVM_KIND_LIST, limit: 40 },
+], null, 2);
 
 export const Route = createFileRoute("/agents")({ component: Agents });
 
 function Agents() {
   const snap = useOrbstr();
   const human = snap.voice === "human";
-  const [task, setTask] = useState(human ? "Find a free tool that can echo text" : "Find a free tool that can echo text");
+  const [task, setTask] = useState("Find a free tool that can echo text");
   const [copied, setCopied] = useState("");
   const hits = useMemo(() => suggestCapabilities(task, snap.catalog), [task, snap.catalog]);
 
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <h1 className="font-display text-4xl">{human ? "Ask in plain words" : "Agent cable"}</h1>
+        <h1 className="font-display text-4xl">{human ? "Discover agents" : "Agent discovery"}</h1>
         <p className="mt-2 max-w-2xl text-muted">
           {human
             ? "Describe what you need. ORBSTR matches it to tools it knows, including AI agents found on Nostr. It will not run them or spend money."
@@ -55,16 +56,16 @@ function Agents() {
       </Panel>
       <div className="grid gap-4 md:grid-cols-2">
         <Panel>
-          <h2 className="font-display text-2xl">{human ? "For a program" : "Relay filter"}</h2>
+          <h2 className="font-display text-2xl">{human ? "For a program" : "Nostr filters (OR)"}</h2>
           <pre className="mt-3 overflow-x-auto rounded-xl bg-bg p-3 text-sm text-phosphor">{REQ}</pre>
           <Button
             className="mt-3"
             type="button"
             onClick={() => {
-              void navigator.clipboard.writeText(REQ).then(() => setCopied("Filter copied."));
+              void navigator.clipboard.writeText(REQ).then(() => setCopied("Filters copied.")).catch(() => setCopied("Copy failed. Select the filters manually."));
             }}
           >
-            {human ? "Copy the filter" : "Copy filter"}
+            {human ? "Copy the filters" : "Copy filters"}
           </Button>
         </Panel>
         <Panel>
@@ -90,7 +91,7 @@ function Agents() {
           </ol>
         </Panel>
       </div>
-      {copied && <p className="text-sm text-phosphor">{copied}</p>}
+      {copied && <p role="status" aria-live="polite" className="text-sm text-phosphor">{copied}</p>}
     </div>
   );
 }

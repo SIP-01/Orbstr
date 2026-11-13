@@ -333,3 +333,10 @@ export function capabilityPointers(tags: string[][]): string[] {
     .filter((tag) => tag[0] === "a" && tag[1]?.startsWith(`${CAPABILITY_KIND}:`))
     .map((tag) => tag[1]);
 }
+
+/** Require at least one relay OK before an event is presented as published. */
+export function assertRelayAcceptance(notes: readonly { state: string }[]): void {
+  if (!notes.some((note) => note.state === "ok")) {
+    throw new Error("No relay accepted this event. It was not published; check relay connectivity and try again.");
+  }
+}

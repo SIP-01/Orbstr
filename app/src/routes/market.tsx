@@ -30,7 +30,7 @@ function Market() {
         <p className="mt-2 max-w-2xl text-muted">
           {human
             ? "Examples ship with the app. Anything found on Nostr, including AI agents, shows up here too. Your own additions replace a card with the same name and key."
-            : "Reference cards ship with the app. Relay announcements, NIP-90 agents, and listings you publish replace a card with the same key."}
+            : "Reference cards ship with the app. NIP-89 handler announcements, optional NIP-90-compatible job handlers, and listings you publish replace a card with the same key."}
         </p>
       </header>
       <form
@@ -41,6 +41,7 @@ function Market() {
         }}
       >
         <input
+          aria-label={human ? "Search listings" : "Filter listings by role, protocol or price"}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           placeholder={human ? "image, free, search" : "role:model price:free inference"}

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildCapabilityEvent, endpointAllowed, matches, parseCapabilityEvent, parseQuery } from "./protocol.ts";
+import { assertRelayAcceptance, buildCapabilityEvent, endpointAllowed, matches, parseCapabilityEvent, parseQuery } from "./protocol.ts";
+import { finalizeEvent, generateSecretKey } from "nostr-tools/pure";
+import { isVerifiedAndUnexpiredNostrEvent } from "./dvm.ts";
 
 test("round-trips a capability without touching kind 39697", () => {
   const draft = buildCapabilityEvent({
@@ -83,4 +85,38 @@ test("local built-in endpoints require an explicit local allow flag", () => {
   assert.equal(endpointAllowed("local://echo"), false);
   assert.equal(endpointAllowed("local://echo", true), true);
   assert.equal(endpointAllowed("local://echo?url=https://example.com", true), false);
+});
+
+test("relay-discovered Nostr events require valid signatures", () => {
+  const secretKey = generateSecretKey();
+  const valid = finalizeEvent({
+    kind: 31990,
+    created_at: 1_800_000_000,
+    tags: [["d", "test"], ["k", "5302"]],
+    content: JSON.stringify({ name: "Search agent" }),
+  }, secretKey);
+  assert.equal(isVerifiedAndUnexpiredNostrEvent(valid, 1_800_000_001), true);
+  assert.equal(isVerifiedAndUnexpiredNostrEvent({ ...valid, content: "tampered" }, 1_800_000_001), false);
+  assert.equal(isVerifiedAndUnexpiredNostrEvent({ ...valid, sig: "0".repeat(128) }, 1_800_000_001), false);
+  assert.equal(isVerifiedAndUnexpiredNostrEvent({ ...valid, id: undefined }, 1_800_000_001), false);
+});
+
+test("relay-discovered Nostr events honour NIP-40 expiry", () => {
+  const secretKey = generateSecretKey();
+  const make = (tags: string[][]) => finalizeEvent({
+    kind: 31990,
+    created_at: 100,
+    tags,
+    content: "{}",
+  }, secretKey);
+  assert.equal(isVerifiedAndUnexpiredNostrEvent(make([]), 100), true);
+  assert.equal(isVerifiedAndUnexpiredNostrEvent(make([["expiration", "101"]]), 100), true);
+  assert.equal(isVerifiedAndUnexpiredNostrEvent(make([["expiration", "100"]]), 100), false);
+  assert.equal(isVerifiedAndUnexpiredNostrEvent(make([["expiration", "soon"]]), 100), false);
+});
+
+test("publishing requires at least one relay acceptance", () => {
+  assert.doesNotThrow(() => assertRelayAcceptance([{ state: "fail" }, { state: "ok" }]));
+  assert.throws(() => assertRelayAcceptance([{ state: "fail" }, { state: "fail" }]), /No relay accepted/);
+  assert.throws(() => assertRelayAcceptance([]), /No relay accepted/);
 });
