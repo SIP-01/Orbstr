@@ -1,5 +1,5 @@
 import { verifyEvent } from "nostr-tools/pure";
-import { slugify, type Capability } from "./protocol";
+import { slugify, type Capability } from "./protocol.ts";
 
 /**
  * Job request kinds a NIP-90 provider puts on its NIP-89 handler (kind 31990).
