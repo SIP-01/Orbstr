@@ -31,7 +31,8 @@ test("Nostr login credentials are never persisted in browser storage", async () 
   }));
 
   const store = await import("../app/src/lib/orbstr/store.ts?security-test");
-  assert.equal(store.useOrbstr().pubkey, null, "legacy persisted sessions must not be restored");
+  assert.equal(store.getActiveLogin(), null, "legacy persisted sessions must not be restored");
+  assert.equal(store.getSigner(), null);
   assert.equal((values.get("orbstr.v2") ?? "").includes(nsec), false, "legacy NSEC must be purged on hydration");
 
   store.rememberLogin({
@@ -52,6 +53,6 @@ test("Nostr login credentials are never persisted in browser storage", async () 
   assert.equal(persisted.signer, null);
 
   const reloaded = await import("../app/src/lib/orbstr/store.ts?security-reload-test");
-  assert.equal(reloaded.useOrbstr().pubkey, null, "the user must re-authenticate after reload");
-  assert.equal(reloaded.useOrbstr().hasKey, false);
+  assert.equal(reloaded.getActiveLogin(), null, "the user must re-authenticate after reload");
+  assert.equal(reloaded.getSigner(), null);
 });
