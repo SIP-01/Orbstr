@@ -32,10 +32,10 @@ Agents and servers must not call discovered endpoints directly. Remote invocatio
 | 39697 | SIP-01 web observation | Read; not a service schema |
 | 39698 | ORBSTR/SIP-01 companion capability profile | Capability announcements |
 | 31990 / 31989 | NIP-89 handlers | Read; do not redefine |
-| 32267 | NIP-82 software packages | Not a tool marketplace |
+| 32267 | No current accepted NIP assignment verified | Do not use as a package standard |
 | 30402 | NIP-99 classifieds | Not used |
 | 30078 | NIP-78 app-specific data | Not a shared directory |
-| 5000–7000 | NIP-90 job kinds | Job transport, not the directory |
+| 5000–7000 | NIP-90 job kinds | Optional compatibility adapter only; unrecommended in the current NIPs index |
 
 ## Layout
 
