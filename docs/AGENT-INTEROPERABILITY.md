@@ -39,12 +39,12 @@ When DNS lookup is unavailable, AID defines GET https://example.com/.well-known/
 ### ORBSTR's proposed binding profile
 
 1. Resolve and validate AID, including the protocol, authentication mode, endpoint and PKA proof where present.
-2. Resolve the same domain's NIP-05 identifier and verify that it maps to the Nostr pubkey signing the agent's NIP-89 handler event.
+2. Resolve the same domain's NIP-05 identifier and confirm that it maps to the Nostr pubkey signing the agent's NIP-89 handler event. Treat this as an identifier mapping, not a trust or competence verdict.
 3. Fetch the NIP-89 kind 31990 handler event and verify its event hash and Schnorr signature.
 4. Compare its supported k job kinds with the actual advertised MCP/A2A capabilities.
-5. Show separate evidence states: **Nostr signature verified**, **NIP-05 domain match**, **AID endpoint verified**, **capability schema inspected**, **endpoint health checked**, and **payment method verified**.
+5. Show separate evidence states: **Nostr signature verified**, **NIP-05 key mapping matched (identifier only)**, **AID endpoint verified**, **capability schema inspected**, **endpoint health checked**, and **payment method verified**.
 
-Do not compress these into one green “trusted agent” badge. The AID/NIP-05 cross-binding is an ORBSTR integration profile to specify and test; it is not a universal Nostr standard today.
+Do not compress these into one green “trusted agent” badge. NIP-05 explicitly describes identification, not user verification. The AID/NIP-05 cross-binding is an ORBSTR integration profile to specify and test; it is not a universal Nostr standard today.
 
 Agent Community's published work items say AID v2 is published and TypeScript, Python and Go SDKs, AID Doctor and the DMV CLI are available. Further agent verification, inter-agent protocols and safety frameworks are listed as future work. Its product MCP endpoint exposes exactly four tools: exact lookup_member, roughly-live get_community_stats, register_agent (a non-binding .agent pre-registration requiring explicit human authorization), and verify_certificate. It is not a bulk member API or a universal trust authority. The .agent TLD is pending ICANN approval; a pre-registration or certificate is not proof of current domain ownership.
 
@@ -70,7 +70,7 @@ References: [AID specification](https://aid.agentcommunity.org), [AID overview](
 | NIP-45 count / NIP-77 sync | COUNT / negentropy | Efficient counts and synchronization between indexers/relays |
 | NIP-31 unknown-event UX | alt tag | Give clients a human-readable fallback for unknown SIP/ORBSTR event kinds |
 
-NIP-B0, NIP-32, NIP-40, NIP-89 and NIP-85 are draft/optional in the current specifications. Keep compatibility paths and do not assume every relay implements them.
+NIP-25, NIP-32, NIP-40, NIP-51, NIP-73, NIP-85 and NIP-89 are draft/optional in the current specifications. Keep compatibility paths and do not assume every relay implements them.
 
 ### Bookmarks
 
