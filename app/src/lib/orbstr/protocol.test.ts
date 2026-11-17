@@ -3,6 +3,7 @@ import test from "node:test";
 import { assertRelayAcceptance, buildCapabilityEvent, endpointAllowed, matches, parseCapabilityEvent, parseQuery } from "./protocol.ts";
 import { finalizeEvent, generateSecretKey } from "nostr-tools/pure";
 import { isVerifiedAndUnexpiredNostrEvent } from "./dvm.ts";
+import { suggestCapabilities } from "./suggest.ts";
 
 test("round-trips a capability without touching kind 39697", () => {
   const draft = buildCapabilityEvent({
@@ -119,4 +120,69 @@ test("publishing requires at least one relay acceptance", () => {
   assert.doesNotThrow(() => assertRelayAcceptance([{ state: "fail" }, { state: "ok" }]));
   assert.throws(() => assertRelayAcceptance([{ state: "fail" }, { state: "fail" }]), /No relay accepted/);
   assert.throws(() => assertRelayAcceptance([]), /No relay accepted/);
+});
+
+
+test("capability listings honour expiry and reject ambiguous singleton tags", () => {
+  const future = buildCapabilityEvent({
+    id: "research-tool",
+    name: "Research Tool",
+    summary: "Searches and fetches public sources",
+    role: "tool",
+    protocols: ["mcp", "mcp"],
+    capabilities: ["research", "search"],
+    price: "free",
+    expiration: 201,
+  }, 100);
+  assert.ok(future);
+  assert.equal(future.tags.filter((tag) => tag[0] === "proto").length, 1);
+  assert.ok(parseCapabilityEvent({ ...future, pubkey: "b".repeat(64) }, "relay", undefined, 200));
+  assert.equal(parseCapabilityEvent({ ...future, pubkey: "b".repeat(64) }, "relay", undefined, 201), null);
+  assert.equal(parseCapabilityEvent({ ...future, pubkey: "b".repeat(64), tags: [...future.tags, ["role", "agent"]] }, "relay", undefined, 200), null);
+  assert.equal(parseCapabilityEvent({ ...future, pubkey: "b".repeat(64), tags: future.tags.map((tag) => tag[0] === "expiration" ? ["expiration", "soon"] : tag) }, "relay", undefined, 200), null);
+});
+
+test("capability queries support task specialisations without expanding role taxonomy", () => {
+  const draft = buildCapabilityEvent({
+    id: "research-tool",
+    name: "Research Tool",
+    summary: "Searches public sources and fetches evidence",
+    role: "tool",
+    protocols: ["mcp"],
+    capabilities: ["research", "search", "fetch"],
+    price: "free",
+  });
+  assert.ok(draft);
+  const item = parseCapabilityEvent({ ...draft, pubkey: "c".repeat(64) }, "relay", undefined, 2_000_000_000);
+  assert.ok(item);
+  assert.deepEqual(parseQuery("role:tool cap:research cap:search proto:mcp price:free"), {
+    text: "",
+    role: "tool",
+    proto: "mcp",
+    price: "free",
+    capabilities: ["research", "search"],
+  });
+  assert.equal(matches(item!, parseQuery("role:tool cap:research proto:mcp")), true);
+  assert.equal(matches(item!, parseQuery("role:tool cap:design")), false);
+  assert.equal(matches(item!, parseQuery("role:agent")), false);
+});
+
+test("suggestions honour explicit filters, rank capabilities and stay deterministic", () => {
+  const make = (id: string, role: "tool" | "agent", capabilities: string[]) => ({
+    id, name: id, summary: "A tool for tasks", about: "", role, protocols: ["mcp"],
+    capabilities, price: "free" as const, status: "active" as const,
+    pubkey: id.padEnd(64, "0").slice(0, 64), createdAt: 100, source: "reference" as const,
+  });
+  const items = [
+    make("general-tool", "tool", ["fetch"]),
+    make("research-agent", "agent", ["research", "search"]),
+    make("research-tool", "tool", ["research", "search"]),
+  ];
+  const first = suggestCapabilities("role:tool cap:research proto:mcp", items);
+  const second = suggestCapabilities("role:tool cap:research proto:mcp", [...items].reverse());
+  assert.deepEqual(first, second);
+  assert.deepEqual(first.map((item) => item.key), [items[2].pubkey + ":research-tool"]);
+  assert.equal(suggestCapabilities("role:agent", items)[0].role, "agent");
+  assert.deepEqual(suggestCapabilities("   ", items), []);
+  assert.deepEqual(suggestCapabilities("role:tool", items, 0), []);
 });
