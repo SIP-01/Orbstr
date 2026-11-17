@@ -5,6 +5,6 @@
   "license": "MIT",
   "description": "ORBSTR capability announcements for agents. SIP-01 companion, kind 39698.",
   "scripts": {
-    "test": "node --test test/"
+    "test": "node --experimental-strip-types --test test/"
   }
 }
