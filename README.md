@@ -14,6 +14,21 @@ Kind 39698 is an ORBSTR/SIP-01 companion profile, not an accepted Nostr NIP or a
 
 **A listing is not permission to invoke.** Nostr signatures establish who published a listing, not whether the endpoint is safe, truthful, available or independent.
 
+## Roles and workflows
+
+The role field is a stable provider class: agent, tool, model, api, compute,
+dataset or gateway. Specialisations such as research, coding, design, debugging
+and security review belong in capability/topic tags, not new role values. This
+keeps discovery interoperable.
+
+ORBSTR's recommended local workflow is
+**discover → verify → shortlist → approve → invoke → validate → settle → audit**.
+Kind 39698 announces capabilities; it does not carry job inputs or grant
+permission. Private task state stays local or travels only over an explicitly
+approved transport. See the
+[workflow guide](docs/AGENT-WORKFLOWS.md) and
+[capability profile](spec/CAPABILITY.md).
+
 ## Endpoint safety
 
 The app's `endpointAllowed()` helper is only a syntactic filter for listing creation/parsing. It rejects common dangerous URL forms and private/reserved IP literals, but it does not resolve DNS, validate all A/AAAA results, pin the actual connected peer or revalidate redirects.
