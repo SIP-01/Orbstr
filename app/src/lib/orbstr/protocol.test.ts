@@ -29,6 +29,7 @@ test("round-trips a capability without touching kind 39697", () => {
     role: "tool",
     proto: "mcp",
     price: undefined,
+    capabilities: [],
   });
   assert.equal(matches(parsed!, parseQuery("role:model")), false);
   assert.equal(matches(parsed!, parseQuery("role:tool echo")), true);
