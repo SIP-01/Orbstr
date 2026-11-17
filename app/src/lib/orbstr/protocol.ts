@@ -85,6 +85,8 @@ export interface QueryParts {
   role?: Role;
   proto?: Proto;
   price?: Price;
+  /** Required capability tags. Every requested tag must be present. */
+  capabilities?: string[];
 }
 
 export function isRole(value: string): value is Role {
@@ -100,17 +102,30 @@ export function isPrice(value: string): value is Price {
 export function parseQuery(input: string): QueryParts {
   const parts = input.trim().split(/\s+/).filter(Boolean);
   const free: string[] = [];
+  const capabilities: string[] = [];
   let role: Role | undefined;
   let proto: Proto | undefined;
   let price: Price | undefined;
+
   for (const part of parts) {
-    const [key, value] = part.split(":");
-    if (value && key === "role" && isRole(value)) role = value;
-    else if (value && key === "proto" && isProto(value)) proto = value;
-    else if (value && key === "price" && isPrice(value)) price = value;
-    else free.push(part);
+    const separator = part.indexOf(":");
+    if (separator < 1) {
+      free.push(part);
+      continue;
+    }
+    const key = part.slice(0, separator).toLowerCase();
+    const value = part.slice(separator + 1).toLowerCase();
+    if (key === "role" && isRole(value)) role = value;
+    else if (key === "proto" && isProto(value)) proto = value;
+    else if (key === "price" && isPrice(value)) price = value;
+    else if ((key === "cap" || key === "capability") && TOPIC_RE.test(value)) {
+      if (!capabilities.includes(value)) capabilities.push(value);
+    } else {
+      // Unknown or malformed filters stay literal text; they are never silently dropped.
+      free.push(part);
+    }
   }
-  return { text: free.join(" "), role, proto, price };
+  return { text: free.join(" "), role, proto, price, capabilities };
 }
 
 /**
@@ -163,6 +178,16 @@ export function endpointAllowed(value: string, allowLocal = false): boolean {
   }
 }
 
+/** Homepage links are web pages, not service transports: HTTPS only. */
+function homepageAllowed(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && endpointAllowed(value);
+  } catch {
+    return false;
+  }
+}
+
 export function slugify(name: string): string {
   const slug = name
     .toLowerCase()
@@ -188,11 +213,13 @@ export function buildCapabilityEvent(input: CapabilityInput, now = Math.floor(Da
   const summary = input.summary.trim().slice(0, 240);
   if (!ID_RE.test(id) || !name || !summary) return null;
   if (!isRole(input.role) || !isPrice(input.price)) return null;
-  const protocols = input.protocols.filter(isProto);
+  const protocols = [...new Set(input.protocols.filter(isProto))];
   if (protocols.length === 0) return null;
   if (input.endpoint && !endpointAllowed(input.endpoint)) return null;
-  if (input.homepage && !endpointAllowed(input.homepage)) return null;
-  if (input.nip89 && !/^\d+:[0-9a-f]{64}:[a-zA-Z0-9_-]+$/.test(input.nip89)) return null;
+  if (input.homepage && !homepageAllowed(input.homepage)) return null;
+  if (input.nip89 && !/^31990:[0-9a-f]{64}:[a-zA-Z0-9_-]+$/.test(input.nip89)) return null;
+  if (input.expiration !== undefined &&
+      (!Number.isSafeInteger(input.expiration) || input.expiration <= now)) return null;
 
   const content: Record<string, string> = { name, summary };
   if (input.about?.trim()) content.about = input.about.trim().slice(0, 2000);
@@ -209,8 +236,8 @@ export function buildCapabilityEvent(input: CapabilityInput, now = Math.floor(Da
   if (input.endpoint) tags.push(["endpoint", input.endpoint]);
   if (input.homepage) tags.push(["r", input.homepage]);
   if (input.nip89) tags.push(["a", input.nip89]);
-  if (input.expiration && Number.isFinite(input.expiration)) {
-    tags.push(["expiration", String(Math.floor(input.expiration))]);
+  if (input.expiration !== undefined) {
+    tags.push(["expiration", String(input.expiration)]);
   }
   tags.push(["alt", `Capability: ${name}`]);
 
@@ -218,13 +245,14 @@ export function buildCapabilityEvent(input: CapabilityInput, now = Math.floor(Da
 }
 
 export function withdrawnEvent(id: string, now = Math.floor(Date.now() / 1000)): UnsignedEvent | null {
-  if (!ID_RE.test(id)) return null;
+  const normalizedId = id.trim().toLowerCase();
+  if (!ID_RE.test(normalizedId) || !Number.isSafeInteger(now) || now < 0) return null;
   return {
     kind: CAPABILITY_KIND,
     created_at: now,
-    content: JSON.stringify({ name: id, summary: "Withdrawn" }),
+    content: JSON.stringify({ name: normalizedId, summary: "Withdrawn" }),
     tags: [
-      ["d", id],
+      ["d", normalizedId],
       ["v", CAPABILITY_SCHEMA],
       ["status", "withdrawn"],
       ["alt", `Capability withdrawn: ${id}`],
@@ -232,8 +260,28 @@ export function withdrawnEvent(id: string, now = Math.floor(Date.now() / 1000)):
   };
 }
 
+function tagEntries(tags: string[][], name: string): string[][] {
+  return tags.filter((tag) => Array.isArray(tag) && tag[0] === name);
+}
+
 function tagValues(tags: string[][], name: string): string[] {
-  return tags.filter((tag) => tag[0] === name && tag[1]).map((tag) => tag[1]);
+  return tagEntries(tags, name)
+    .map((tag) => tag[1])
+    .filter((value): value is string => typeof value === "string" && value.length > 0);
+}
+
+function oneTag(tags: string[][], name: string): string | null {
+  const entries = tagEntries(tags, name);
+  if (entries.length !== 1 || typeof entries[0][1] !== "string" || !entries[0][1]) return null;
+  return entries[0][1];
+}
+
+function optionalOneTag(tags: string[][], name: string): string | undefined | null {
+  const entries = tagEntries(tags, name);
+  if (entries.length > 1) return null;
+  if (entries.length === 0) return undefined;
+  if (typeof entries[0][1] !== "string" || !entries[0][1]) return null;
+  return entries[0][1];
 }
 
 export function parseCapabilityEvent(
@@ -246,13 +294,23 @@ export function parseCapabilityEvent(
   },
   source: ListingSource,
   relay?: string,
+  nowSeconds = Math.floor(Date.now() / 1000),
 ): Capability | null {
-  if (event.kind !== CAPABILITY_KIND) return null;
-  if (!HEX64.test(event.pubkey)) return null;
-  const version = tagValues(event.tags, "v")[0];
-  const id = tagValues(event.tags, "d")[0]?.toLowerCase();
-  if (version !== CAPABILITY_SCHEMA || !id || !ID_RE.test(id)) return null;
-  if (tagValues(event.tags, "status")[0] === "withdrawn") {
+  if (event.kind !== CAPABILITY_KIND || !HEX64.test(event.pubkey)) return null;
+  if (!Number.isSafeInteger(event.created_at) || event.created_at < 0 ||
+      !Number.isSafeInteger(nowSeconds) || nowSeconds < 0) return null;
+
+  const id = oneTag(event.tags, "d");
+  const version = oneTag(event.tags, "v");
+  const alt = oneTag(event.tags, "alt");
+  if (!id || !ID_RE.test(id) || version !== CAPABILITY_SCHEMA || !alt) return null;
+
+  const status = optionalOneTag(event.tags, "status");
+  if (status === null) return null;
+  if (status !== undefined && status !== "withdrawn") return null;
+  if (status === "withdrawn") {
+    if (tagEntries(event.tags, "role").length || tagEntries(event.tags, "proto").length ||
+        tagEntries(event.tags, "price").length) return null;
     return {
       id,
       name: id,
@@ -269,37 +327,60 @@ export function parseCapabilityEvent(
       relay,
     };
   }
+
+  const expirationTag = optionalOneTag(event.tags, "expiration");
+  if (expirationTag === null) return null;
+  let expiration: number | undefined;
+  if (expirationTag !== undefined) {
+    if (!/^\d+$/.test(expirationTag)) return null;
+    expiration = Number(expirationTag);
+    // Expired capabilities are not discoverable, even if a relay returns them.
+    if (!Number.isSafeInteger(expiration) || expiration <= nowSeconds) return null;
+  }
+
   let parsed: Record<string, unknown>;
   try {
     parsed = JSON.parse(event.content) as Record<string, unknown>;
   } catch {
     return null;
   }
+
   const name = typeof parsed.name === "string" ? parsed.name.trim() : "";
   const summary = typeof parsed.summary === "string" ? parsed.summary.trim() : "";
-  const role = tagValues(event.tags, "role")[0] ?? "";
-  const price = tagValues(event.tags, "price")[0] ?? "";
-  const protocols = tagValues(event.tags, "proto").filter(isProto);
-  if (!name || !summary || !isRole(role) || !isPrice(price) || protocols.length === 0) return null;
-  const endpoint = tagValues(event.tags, "endpoint")[0];
-  const homepage = tagValues(event.tags, "r")[0];
-  if (endpoint && !endpointAllowed(endpoint)) return null;
-  if (homepage && !endpointAllowed(homepage)) return null;
-  const expiration = Number(tagValues(event.tags, "expiration")[0]);
+  const role = oneTag(event.tags, "role") ?? "";
+  const price = oneTag(event.tags, "price") ?? "";
+  const protoEntries = tagEntries(event.tags, "proto");
+  if (!name || !summary || name.length > 80 || summary.length > 240 ||
+      !isRole(role) || !isPrice(price) || protoEntries.length === 0 ||
+      protoEntries.some((tag) => typeof tag[1] !== "string" || !tag[1])) return null;
+
+  const protocols = [...new Set(tagValues(event.tags, "proto").filter(isProto))];
+  if (protocols.length === 0) return null;
+
+  const endpointTag = optionalOneTag(event.tags, "endpoint");
+  const homepageTag = optionalOneTag(event.tags, "r");
+  if (endpointTag === null || homepageTag === null) return null;
+  if (endpointTag && !endpointAllowed(endpointTag)) return null;
+  if (homepageTag && !homepageAllowed(homepageTag)) return null;
+
+  const nip89 = tagValues(event.tags, "a").find((value) =>
+    /^31990:[0-9a-f]{64}:[a-zA-Z0-9_-]+$/.test(value),
+  );
+
   return {
     id,
-    name: name.slice(0, 80),
-    summary: summary.slice(0, 240),
+    name,
+    summary,
     about: typeof parsed.about === "string" ? parsed.about.slice(0, 2000) : "",
     role,
     protocols,
-    capabilities: tagValues(event.tags, "t").filter((topic) => TOPIC_RE.test(topic)).slice(0, 12),
-    endpoint,
-    homepage,
+    capabilities: [...new Set(tagValues(event.tags, "t").filter((topic) => TOPIC_RE.test(topic)))].slice(0, 12),
+    endpoint: endpointTag,
+    homepage: homepageTag,
     price,
     priceNote: typeof parsed.priceNote === "string" ? parsed.priceNote.slice(0, 240) : undefined,
-    nip89: tagValues(event.tags, "a").find((value) => value.startsWith("31990:")),
-    expiration: Number.isFinite(expiration) ? expiration : undefined,
+    nip89,
+    expiration,
     status: "active",
     pubkey: event.pubkey,
     createdAt: event.created_at,
@@ -309,14 +390,16 @@ export function parseCapabilityEvent(
 }
 
 export function listingKey(item: Pick<Capability, "pubkey" | "id">): string {
-  return `${item.pubkey}:${item.id}`;
+  return item.pubkey + ":" + item.id;
 }
 
-export function matches(item: Capability, query: QueryParts): boolean {
+export function matches(item: Capability, query: QueryParts, nowSeconds = Math.floor(Date.now() / 1000)): boolean {
   if (item.status !== "active") return false;
+  if (item.expiration !== undefined && item.expiration <= nowSeconds) return false;
   if (query.role && item.role !== query.role) return false;
   if (query.proto && !item.protocols.includes(query.proto)) return false;
   if (query.price && item.price !== query.price) return false;
+  if (query.capabilities?.some((capability) => !item.capabilities.includes(capability))) return false;
   if (!query.text) return true;
   const hay = [item.name, item.summary, item.about, item.role, ...item.protocols, ...item.capabilities]
     .join(" ")

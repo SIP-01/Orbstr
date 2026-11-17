@@ -28,6 +28,8 @@ jobs:
       - name: Install locked dependencies
         working-directory: app
         run: npm ci
+      - name: Run package-level capability and workflow tests
+        run: npm test
       - name: Run isolated ORBSTR endpoint safety regression tests
         working-directory: app
         run: npm run test:orbstr

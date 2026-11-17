@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
-import { REFERENCE_CATALOG } from "./catalog";
-import { listingKey, type Capability } from "./protocol";
+import { REFERENCE_CATALOG } from "./catalog.ts";
+import { listingKey, type Capability } from "./protocol.ts";
 
 const STORAGE_KEY = "orbstr.v2";
 

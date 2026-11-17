@@ -1,4 +1,4 @@
-import type { Capability } from "./protocol";
+import type { Capability } from "./protocol.ts";
 
 const REFERENCE = "reference";
 

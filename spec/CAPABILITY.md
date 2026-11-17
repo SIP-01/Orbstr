@@ -81,6 +81,54 @@ A kind 39697 observation MAY add, without bumping schema `v`:
 
 `d`, `u`, and `x` stay defined by SIP-01 §3, §7, and §8. Indexers that do not know these tags skip them.
 
+
+## Role and workflow semantics (profile clarification)
+
+The role field is a provider class, not a job title or a trust rating:
+
+| Role | Provider class | Typical capability tags (t) |
+|---|---|---|
+| agent | Autonomous or semi-autonomous coordinator that can plan and route work | research, planning, delegation, verification |
+| tool | Bounded operation callable by a client or agent | search, fetch, extract, convert, debug |
+| model | Inference or embedding model endpoint | text-generation, embeddings, reranking, vision |
+| api | Domain API or data service | market-data, weather, payments, identity |
+| compute | General or specialised execution capacity | cpu, gpu, rendering, training |
+| dataset | Discoverable data collection or index | research, code, geospatial, public-records |
+| gateway | Protocol, identity or network bridge | mcp-proxy, nostr-bridge, a2a-router |
+
+Specialisations such as researcher, coder, designer, debugger, auditor and
+security-reviewer MUST be expressed as capability/topic tags (for example
+t=code-review or t=security-audit), not new top-level role values. This keeps
+the role vocabulary small and leaves existing consumers compatible. A listing
+has one primary role and may carry multiple capability tags and protocols.
+
+Suggested local discovery query syntax is:
+role:tool cap:search proto:mcp price:free
+
+The cap: filter is a client query convention over the event's repeatable t
+tags. It does not add a new Nostr tag or change the event schema.
+
+## Workflow boundary
+
+Kind 39698 describes what a provider claims it can do. It is not a job request,
+execution receipt, payment authorisation or permission grant. Task inputs,
+user prompts, credentials, private results, budgets and workflow state MUST NOT
+be placed in kind 39697 observations or public capability announcements. Keep
+workflow envelopes local or send them only through an explicitly approved
+provider transport. See the Agent workflow guidance.
+
+The recommended lifecycle is:
+
+discover → verify → shortlist → approve → invoke → validate → settle → audit
+
+Every transition is gated. Signature verification and expiry are checked
+before a listing is considered; endpoint safety is enforced by a trusted
+egress gateway at connection time; user approval is required for remote data
+disclosure and cost-bearing actions; output is validated before acceptance;
+payment completion is confirmed through the payment provider, not inferred
+from listing tags or a Nostr receipt alone. The workflow guide defines state
+transitions, idempotency, cancellation, budgets and failure handling.
+
 ## Safety
 
 - Discovery is not invocation.
