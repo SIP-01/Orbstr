@@ -4,6 +4,7 @@ import { assertRelayAcceptance, buildCapabilityEvent, endpointAllowed, matches, 
 import { finalizeEvent, generateSecretKey } from "nostr-tools/pure";
 import { isVerifiedAndUnexpiredNostrEvent } from "./dvm.ts";
 import { suggestCapabilities } from "./suggest.ts";
+import type { Capability } from "./protocol.ts";
 
 test("round-trips a capability without touching kind 39697", () => {
   const draft = buildCapabilityEvent({
@@ -169,7 +170,7 @@ test("capability queries support task specialisations without expanding role tax
 });
 
 test("suggestions honour explicit filters, rank capabilities and stay deterministic", () => {
-  const make = (id: string, role: "tool" | "agent", capabilities: string[]) => ({
+  const make = (id: string, role: "tool" | "agent", capabilities: string[]): Capability => ({
     id, name: id, summary: "A tool for tasks", about: "", role, protocols: ["mcp"],
     capabilities, price: "free" as const, status: "active" as const,
     pubkey: id.padEnd(64, "0").slice(0, 64), createdAt: 100, source: "reference" as const,
