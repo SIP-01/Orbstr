@@ -1,4 +1,4 @@
-import { matches, parseQuery, type Capability } from "./capability";
+import { matches, parseQuery, type Capability } from "./capability.ts";
 
 export interface Suggestion {
   key: string;
