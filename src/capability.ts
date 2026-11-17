@@ -2,7 +2,7 @@
  * ORBSTR capability announcements.
  *
  * Kind 39698 is a SIP-01 companion, not a change to kind 39697.
- * Checked unused on 2026-11-07 against nostr-protocol/nips README and
+ * Registry rechecked on 2026-11-17 against nostr-protocol/nips README and
  * nostr-protocol/registry-of-kinds schema.yaml (39xxx already taken there:
  * 39000–39005, 39067, 39089, 39092, 39701). 39697 remains Web Index Observations.
  *
